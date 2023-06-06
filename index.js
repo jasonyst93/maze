@@ -1,7 +1,7 @@
-const { Engine, Render, Runner, World, Bodies, MouseConstraint, Mouse } = Matter;
+const { Engine, Render, Runner, World, Bodies, } = Matter;
 
-//put out the width and height for calculation
-const width = 800;
+const cells = 3;
+const width = 600;
 const height = 600;
 
 const engine = Engine.create();
@@ -9,8 +9,8 @@ const { world } = engine;
 const render = Render.create({
     element: document.body,
     engine: engine,
-    options: { // Corrected 'option' to 'options'
-        wireframes: false, //turn off wire frames mode
+    options: {
+        wireframes: true,
         width,
         height
     }
@@ -18,34 +18,80 @@ const render = Render.create({
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-//Click & Drag
-World.add(world, MouseConstraint.create(engine, {
-    mouse: Mouse.create(render.canvas),
-}));
-
-//Walls
 const walls = [
-    Bodies.rectangle(400, 0, 800, 40, { isStatic: true }),
-    Bodies.rectangle(400, 600, 800, 40, { isStatic: true }),
-    Bodies.rectangle(0, 300, 40, 600, { isStatic: true }),
-    Bodies.rectangle(800, 300, 40, 600, { isStatic: true }),
+    Bodies.rectangle(width / 2, 0, width, 40, { isStatic: true }),
+    Bodies.rectangle(width / 2, height, width, 40, { isStatic: true }),
+    Bodies.rectangle(0, height / 2, 40, height, { isStatic: true }),
+    Bodies.rectangle(width, height / 2, 40, height, { isStatic: true }),
 ];
 World.add(world, walls);
 
-//Random Shapes
-for (let i = 0; i < 30; i++) {
-    //Math.random 0-1 => 0.xxxx (Generating shapes in random width height within carnavs)
-    if (Math.random() > 0.3) {
-        World.add(world,
-            Bodies.rectangle(Math.random() * width, Math.random() * height, 50, 50));
-    } else {
-        World.add(world,
-            Bodies.circle(Math.random() * width, Math.random() * height, 25, {
-                render: {
-                    fillStyle: 'green' //set circle to 'green'
-                }
-            }));
+//Maze Generation
+
+const shuffle = (arr) => {
+    let counter = arr.length;
+    while (counter > 0) {
+        const index = Math.floor(Math.random() * counter)
+        counter--;
+        const temp = arr[counter];
+        arr[counter] = arr[index];
+        arr[index] = temp;
+    }
+    return arr;
+}
+
+const grid = Array(cells)
+    .fill(null)
+    .map(() => Array(cells).fill(false))
+
+const verticals = Array(cells)
+    .fill(null)
+    .map(() => Array(cells - 1).fill(false))
+
+const horizontals = Array(cells - 1)
+    .fill(null)
+    .map(() => Array(cells).fill(false))
+
+const startRow = Math.floor(Math.random() * cells);
+const startColumn = Math.floor(Math.random() * cells)
+
+const stepThroughCell = (row, column) => {
+    if (grid[row][column]) {
+        return;
+    }
+
+    grid[row][column] = true;
+
+    const neighbors = shuffle([
+        [row - 1, column, 'up'],
+        [row, column + 1, 'right'],
+        [row + 1, column, 'down'],
+        [row, column - 1, 'left']
+    ]);
+
+
+    for (let neighbor of neighbors) {
+        const [nextRow, nextColumn, direction] = neighbor;
+
+        if (nextRow < 0 || nextRow >= cells || nextColumn < 0 || nextColumn >= cells) {
+            continue;
+        }
+
+        if (grid[nextRow][nextColumn]) {
+            continue;
+        }
+
+        if (direction === 'left') {
+            verticals[row][column - 1] = true;
+        } else if (direction === 'right') {
+            verticals[row][column] = true;
+        } else if (direction === 'up') {
+            horizontals[row - 1][column] = true;
+        } else if (direction === 'down') {
+            horizontals[row][column] = true
+        }
+        stepThroughCell(nextRow, nextColumn)
     }
 }
 
-
+stepThroughCell(startRow, startColumn)
